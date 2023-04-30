@@ -12,7 +12,7 @@ reset='\e[0m'         # reset
 
 
 function setup_progress () {
-  local setup_logfile= $DIR/log.log
+  local setup_logfile=$DIR/log.log
   if [ -w $setup_logfile ]
   then
     echo "$( date ) : $*" >> "$setup_logfile"
@@ -209,7 +209,7 @@ createmenu ()
 		then
 			echo "Goodbye!"
 			break;
-		elif [ 1 -le "$REPLY" ] && [ "$REPLY" -le $(($#-1)) ];
+		elif [ 1 -le "$REPLY" ] && [ "$REPLY" -le $(($#+0)) ];
 		then
 			#echo "You selected $option which is option $REPLY"
 			m_uuid=$(echo $option | sed -e "s/^.*\((\)\(.*\)\()\).*$/\2/")
@@ -244,14 +244,6 @@ function mountExternalDrive(){
     setup_progress "External hird drive mounted successfully."
 }
 
-function resetSettings(){
-
-}
-
-function finalizeSetup(){
-    resetSettings
-}
-
 function init(){
     #sudo apt-get update && sudo apt-get dist-upgrade -y && sudo apt-get autoremove -y && sudo apt-get autoclean
     setup_progress "********************************************************************************************"
@@ -262,19 +254,19 @@ function init(){
 }
 
 function startSetup(){
-    init
+    #init
 
-    install_xrdp
+    #install_xrdp
     
-    enable_camera
+    #enable_camera
 
-    enable_ssh
+    #enable_ssh
 
-    mountExternalDrive
+    #mountExternalDrive
     
-    setupDocker
+    #setupDocker
 
-    setupPortainer
+    #setupPortainer
 
     setup_progress "Setup done successfully."
 }
