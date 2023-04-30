@@ -123,9 +123,13 @@ function setupDocker(){
 function setupPortainer(){
     #download the docker image to your device.
     sudo docker pull portainer/portainer-ce:latest
-    
+
+    #make directory for portainer container if does not exists already.
+    mkdir -p /mnt/seagateDisk/portainer/containers/portainer/portainer_data
+
     #run portainer container 
-    sudo docker run -d -p 9000:9000 --name=portainer --restart=always -v /mnt/seagateDisk/portainer/containers/portainer/var/run/docker.sock:/var/run/docker.sock -v /mnt/seagateDisk/portainer/containers/portainer/portainer_data:/data portainer/portainer-ce:latest
+    #sudo docker run -d -p 9000:9000 --name=portainer --restart=always -v /mnt/seagateDisk/portainer/containers/portainer/var/run/docker.sock:/var/run/docker.sock -v /mnt/seagateDisk/portainer/containers/portainer/portainer_data:/data portainer/portainer-ce:latest
+    sudo docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /mnt/seagateDisk/portainer/containers/portainer/var/run/docker.sock:/var/run/docker.sock -v /mnt/seagateDisk/portainer/containers/portainer/portainer_data:/data portainer/portainer-ce:latest
     
 }
 
