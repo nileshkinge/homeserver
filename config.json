@@ -1,3 +1,4 @@
 {
-    "externalstoragepath": "/mnt/seagateDisk/portainer/containers/"
+    "externalstoragepath": "/mnt/seagateDisk/portainer/containers/",
+    "update":1
 }

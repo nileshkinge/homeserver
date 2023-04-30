@@ -1,10 +1,18 @@
 #!/bin/bash
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"  # get cur dir of this script
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+NC='\033[0m'          # No Color
 IYellow='\e[93m'      # Yellow
 reset='\e[0m'         # reset
 
+
+
 function setup_progress () {
-  local setup_logfile=/home/pi/dashcam/code/dashCam-setup.log
+  local setup_logfile= $DIR/log.log
   if [ -w $setup_logfile ]
   then
     echo "$( date ) : $*" >> "$setup_logfile"
@@ -71,67 +79,6 @@ function enable_remote_GPIO(){
     fi
 }
 
-function setup_dashcam_cronjob(){
-#!/bin/bash
-    #write out current crontab
-    crontab -l > dashcamcron
-
-    setup_progress "Path is set to: $PATH"
-    echo "PATH=/bin:/usr/bin:/sbin:/usr/sbin" >> dashcamcron
-
-    #echo new cron into cron file
-    echo "@reboot python3 /home/pi/dashcam/code/dashCam.py >>/home/pi/dashcam/code/log.log 2>&1" >> dashcamcron
-    
-    crontab dashcamcron
-    rm dashcamcron
-}
-
-function setup_email(){
-    read -p "$(echo -e $IYellow "Do you want to setup email? (Y/N): "$reset)" wantToSetupEmail
-
-    if [[ "$wantToSetupEmail" == "Y" || "$wantToSetupEmail" == "y" ]]
-    then
-        read -p "$(echo -e $IYellow "Enter 'To: ' email: "$reset)" toEmail
-        read -p "$(echo -e $IYellow "Enter 'From: ' email (gmail account): "$reset)" fromEmail
-        read -sp "$(echo -e $IYellow "Enter your gmail password: "$reset)" gmailPassword
-
-        python3 -c'import mail; mail.initValues("'$toEmail'", "'$fromEmail'", "'$gmailPassword'")'
-
-        setup_progress "adding mailer cron job"
-        crontab -l > dashcamcron
-        echo "@reboot sleep 300 && python3 /home/pi/dashcam/code/mailer.py >>/home/pi/dashcam/code/log.log 2>&1" >> dashcamcron
-        #install new cron file
-        crontab dashcamcron
-        rm dashcamcron
-    fi
-}
-
-function setup_UI(){
-    read -p "$(echo -e $IYellow "Do you want to setup UI? (Y/N): "$reset)" wantToSetupWebUi
-
-    if [[ "$wantToSetupWebUi" == "Y" || "$wantToSetupWebUi" == "y" ]]
-    then    
-        setup_progress "Installing node js"
-        curl -o node-v9.7.1-linux-armv6l.tar.gz https://nodejs.org/dist/v9.7.1/node-v9.7.1-linux-armv6l.tar.gz
-        tar -xzf node-v9.7.1-linux-armv6l.tar.gz
-        sudo cp -r node-v9.7.1-linux-armv6l/* /usr/local/
-        node -v && npm -v
-        setup_progress "node js installed successfully"
-
-        setup_progress "install web app dependencies"
-        sudo npm install /home/pi/dashcam/code/web
-
-        setup_progress "adding mailer cron job"
-        crontab -l > dashcamcron
-        echo "@reboot sudo /usr/local/bin/node /home/pi/dashcam/code/web/app.js >>/home/pi/dashcam/code/log.log 2>&1" >> dashcamcron
-        #install new cron file
-        crontab dashcamcron
-        rm dashcamcron    
-
-        setup_progress "web app dependencies installed successfully."
-    fi
-}
-
 function install_rclone(){
     read -p "$(echo -e $IYellow "Do you want to install rclone? (Y/N): "$reset)" wantToInstallRclone
     if [[ "$wantToInstallRclone" == "Y" || "$wantToInstallRclone" == "y" ]]
@@ -143,17 +90,8 @@ function install_rclone(){
     fi    
 }
 
-function setup_accesspoint(){
-    read -p "$(echo -e $IYellow "Do you want to setup as access point? (Y/N): "$reset)" wantToSetupAP
-    if [[ "$wantToSetupAP" == "Y" || "$wantToSetupAP" == "y" ]]
-    then
-        setup_progress "Setting up access point."
-        /bin/bash apSetup.sh dashcam
-        setup_progress "access point setup successfull."
-    fi
-}
-
 function installDocker(){
+    
     setupDocker
 
     verifyDockerInstallation
@@ -191,6 +129,129 @@ function setupPortainer(){
     
 }
 
+
+function replace_fstab {
+	echo -n "UUID=$m_uuid" >> /etc/fstab 	# UUID of device
+	echo -e -n "\t" >> /etc/fstab			# TAB
+	echo -n "$m_dest" >> /etc/fstab			# Mount destination path
+	echo -e -n "\t" >> /etc/fstab			# TAB
+	#echo -n "$m_type" >> /etc/fstab		# Filesystem type
+	echo -n "auto" >> /etc/fstab			# Automatically choose filesystem type
+	echo -e -n "\t" >> /etc/fstab			# TAB
+	echo -n "nofail,uid=1001,gid=1001,errors=remount-ro" >> /etc/fstab # USER ID, GROUP ID etc.
+	echo -e -n "\t" >> /etc/fstab			# TAB
+	echo -n "0" >> /etc/fstab				
+	echo -e -n "\t" >> /etc/fstab			# TAB
+	echo "1" >> /etc/fstab				
+	
+	printf "${GREEN}'/etc/fstab' patched!${NC}\n"
+}
+
+function set_type {
+	echo "Setting up '$1' to be mounted on startup ..."
+	echo "Type: $(sudo blkid -o value -s TYPE $1)"
+	
+	m_type=$(sudo blkid -o value -s TYPE $1)
+	
+	#case $(sudo blkid -o value -s TYPE $1) in
+	#	"ntfs" ) echo "preparing NTFS";;
+	#	* ) echo "Everything else";;
+	#esac
+	echo "Filesystem type: $m_type"
+	set_mount_path
+}
+
+function set_mount_path {
+	printf "${CYAN}Enter mount destination: ${NC}\n"
+	read dest
+	if [ $dest != "" ] && [ -d $dest ]; then
+		echo "Path ok..."
+		m_dest=$dest
+		replace_fstab
+	else
+		printf "${RED}Path '$dest' does not exist!${NC}\n"
+	fi
+}
+
+function ask_sure {
+	options=("Yes")
+	title="Selected '$1'"
+	prompt="Automount '$1' ?"
+
+	echo "$title"
+	PS3="$prompt "
+	select opt in "${options[@]}" "Quit"; do 
+
+		case "$REPLY" in
+
+		1 ) echo "Proceeding..."; m_device = $1;set_type $1;break;;
+
+		$(( ${#options[@]}+1 )) ) echo "Goodbye!"; break;;
+		*) echo "Invalid option. Try another one.";continue;;
+
+		esac
+
+	done
+}
+
+createmenu ()
+{
+	#echo "Size of array: $#"
+	#echo "$@"
+	title="Devices"
+	prompt="Pick a device ($(($#+1)) to exit):"
+
+	echo "$title"
+	PS3="$prompt "
+  
+	select option; do # in "$@" is the default
+		if [ "$REPLY" -gt "$#" ];
+		then
+			echo "Goodbye!"
+			break;
+		elif [ 1 -le "$REPLY" ] && [ "$REPLY" -le $(($#-1)) ];
+		then
+			#echo "You selected $option which is option $REPLY"
+			m_uuid=$(echo $option | sed -e "s/^.*\((\)\(.*\)\()\).*$/\2/")
+			#echo "Selected UUID: $m_uuid"
+			ask_sure $option
+			break;
+		else
+			printf "${RED}Incorrect Input: Select a number 1-$#${NC}\n"
+		fi
+	done
+}
+
+function select_device {
+	devives_list=
+
+	for DEVICE in $(sudo blkid -o device); do
+		LABEL=$(sudo blkid -o value -s LABEL $DEVICE)
+		UUID=$(sudo blkid -o value -s UUID $DEVICE)
+		#echo "$DEVICE = $LABEL ($UUID)"
+		devices_list[i]="$DEVICE = $LABEL ($UUID)"
+		let i++
+	done
+
+	createmenu "${devices_list[@]}"
+}
+
+function mountExternalDrive(){
+    setup_progress "Mounting external hird drive."
+    
+    select_device
+    
+    setup_progress "External hird drive mounted successfully."
+}
+
+function resetSettings(){
+
+}
+
+function finalizeSetup(){
+    resetSettings
+}
+
 function init(){
     #sudo apt-get update && sudo apt-get dist-upgrade -y && sudo apt-get autoremove -y && sudo apt-get autoclean
     setup_progress "********************************************************************************************"
@@ -209,6 +270,8 @@ function startSetup(){
 
     enable_ssh
 
+    mountExternalDrive
+    
     setupDocker
 
     setupPortainer
@@ -217,50 +280,3 @@ function startSetup(){
 }
 
 startSetup
-
-
-#define SET_HOSTNAME    "sudo raspi-config nonint do_hostname %s"
-#define GET_BOOT_CLI    "sudo raspi-config nonint get_boot_cli"
-#define GET_AUTOLOGIN   "sudo raspi-config nonint get_autologin"
-#define SET_BOOT_CLI    "sudo raspi-config nonint do_boot_behaviour B1"
-#define SET_BOOT_CLIA   "sudo raspi-config nonint do_boot_behaviour B2"
-#define SET_BOOT_GUI    "sudo raspi-config nonint do_boot_behaviour B3"
-#define SET_BOOT_GUIA   "sudo raspi-config nonint do_boot_behaviour B4"
-#define GET_BOOT_WAIT   "sudo raspi-config nonint get_boot_wait"
-#define SET_BOOT_WAIT   "sudo raspi-config nonint do_boot_wait %d"
-#define GET_SPLASH      "sudo raspi-config nonint get_boot_splash"
-#define SET_SPLASH      "sudo raspi-config nonint do_boot_splash %d"
-#define GET_OVERSCAN    "sudo raspi-config nonint get_overscan"
-#define SET_OVERSCAN    "sudo raspi-config nonint do_overscan %d"
-#define GET_CAMERA      "sudo raspi-config nonint get_camera"
-#define SET_CAMERA      "sudo raspi-config nonint do_camera %d"
-#define GET_SSH         "sudo raspi-config nonint get_ssh"
-#define SET_SSH         "sudo raspi-config nonint do_ssh %d"
-#define GET_VNC         "sudo raspi-config nonint get_vnc"
-#define SET_VNC         "sudo raspi-config nonint do_vnc %d"
-#define GET_SPI         "sudo raspi-config nonint get_spi"
-#define SET_SPI         "sudo raspi-config nonint do_spi %d"
-#define GET_I2C         "sudo raspi-config nonint get_i2c"
-#define SET_I2C         "sudo raspi-config nonint do_i2c %d"
-#define GET_SERIAL      "sudo raspi-config nonint get_serial"
-#define GET_SERIALHW    "sudo raspi-config nonint get_serial_hw"
-#define SET_SERIAL      "sudo raspi-config nonint do_serial %d"
-#define GET_1WIRE       "sudo raspi-config nonint get_onewire"
-#define SET_1WIRE       "sudo raspi-config nonint do_onewire %d"
-#define GET_RGPIO       "sudo raspi-config nonint get_rgpio"
-#define SET_RGPIO       "sudo raspi-config nonint do_rgpio %d"
-#define GET_PI_TYPE     "sudo raspi-config nonint get_pi_type"
-#define GET_OVERCLOCK   "sudo raspi-config nonint get_config_var arm_freq /boot/config.txt"
-#define SET_OVERCLOCK   "sudo raspi-config nonint do_overclock %s"
-#define GET_GPU_MEM     "sudo raspi-config nonint get_config_var gpu_mem /boot/config.txt"
-#define GET_GPU_MEM_256 "sudo raspi-config nonint get_config_var gpu_mem_256 /boot/config.txt"
-#define GET_GPU_MEM_512 "sudo raspi-config nonint get_config_var gpu_mem_512 /boot/config.txt"
-#define GET_GPU_MEM_1K  "sudo raspi-config nonint get_config_var gpu_mem_1024 /boot/config.txt"
-#define SET_GPU_MEM     "sudo raspi-config nonint do_memory_split %d"
-#define GET_HDMI_GROUP  "sudo raspi-config nonint get_config_var hdmi_group /boot/config.txt"
-#define GET_HDMI_MODE   "sudo raspi-config nonint get_config_var hdmi_mode /boot/config.txt"
-#define SET_HDMI_GP_MOD "sudo raspi-config nonint do_resolution %d %d"
-#define GET_WIFI_CTRY   "sudo raspi-config nonint get_wifi_country"
-#define SET_WIFI_CTRY   "sudo raspi-config nonint do_wifi_country %s"
-#define CHANGE_PASSWD   "(echo \"%s\" ; echo \"%s\" ; echo \"%s\") | passwd"
-#END
