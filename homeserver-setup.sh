@@ -6,7 +6,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 NC='\033[0m'          # No Color
-IYellow='\e[93m'      # Yellow
+YELLOW='\e[93m'      # Yellow
 reset='\e[0m'         # reset
 
 
@@ -15,11 +15,11 @@ function setup_progress () {
   local setup_logfile=$DIR/log.log
   if [ -w $setup_logfile ]
   then
-    echo "$( date ) : $*" >> "$setup_logfile"
+    echo "$( date ) : $1" >> "$setup_logfile"
   else
-    echo "$( date ) : $*" >> "$setup_logfile" 2>&1
+    echo "$( date ) : $1" >> "$setup_logfile" 2>&1
   fi
-  echo "$@"
+  echo -e "$2 $1${NC}"
 }
 
 function install_xrdp(){
@@ -148,12 +148,12 @@ function replace_fstab {
 	echo -e -n "\t" >> /etc/fstab			# TAB
 	echo "1" >> /etc/fstab				
 	
-	printf "${GREEN}'/etc/fstab' patched!${NC}\n"
+	setup_progress "'/etc/fstab' patched!" $GREEN
 }
 
 function set_type {
-	echo "Setting up '$1' to be mounted on startup ..."
-	echo "Type: $(sudo blkid -o value -s TYPE $1)"
+	setup_progress "Setting up '$1' to be mounted on startup ..." $YELLOW
+	setup_progress "Type: $(sudo blkid -o value -s TYPE $1)" $YELLOW
 	
 	m_type=$(sudo blkid -o value -s TYPE $1)
 	
@@ -161,19 +161,35 @@ function set_type {
 	#	"ntfs" ) echo "preparing NTFS";;
 	#	* ) echo "Everything else";;
 	#esac
-	echo "Filesystem type: $m_type"
+	setup_progress "Filesystem type: $m_type" $YELLOW
 	set_mount_path
 }
 
+function ask_path_creation {
+    setup_progress "Do you wish to create $@ path? (y/n)? " $YELLOW
+    read answer
+
+    if [ "$answer" != "${answer#[Yy]}" ] ;then 
+        mkdir -p $@
+        setup_progress "Path '$@' was created." $YELLOW
+        m_dest=$@
+        replace_fstab
+    else
+        setup_progress "Goodbye!" $YELLOW
+        break;
+    fi
+}
+
 function set_mount_path {
-	printf "${CYAN}Enter mount destination: ${NC}\n"
+	setup_progress "Enter mount destination: " $CYAN
 	read dest
 	if [ $dest != "" ] && [ -d $dest ]; then
-		echo "Path ok..."
+		setup_progress "Path ok..." $YELLOW
 		m_dest=$dest
 		replace_fstab
 	else
-		printf "${RED}Path '$dest' does not exist!${NC}\n"
+		setup_progress "Path '$dest' does not exist!" $RED
+        ask_path_creation $dest
 	fi
 }
 
@@ -211,13 +227,13 @@ createmenu ()
 	select option; do # in "$@" is the default
 		if [ "$REPLY" -gt "$#" ];
 		then
-			echo "Goodbye!"
+			setup_progress "Goodbye!" $YELLOW
 			break;
 		elif [ 1 -le "$REPLY" ] && [ "$REPLY" -le $(($#+0)) ];
 		then
 			#echo "You selected $option which is option $REPLY"
 			m_uuid=$(echo $option | sed -e "s/^.*\((\)\(.*\)\()\).*$/\2/")
-			#echo "Selected UUID: $m_uuid"
+			setup_progress "Selected UUID: $m_uuid" $YELLOW
 			ask_sure $option
 			break;
 		else
@@ -241,30 +257,24 @@ function select_device {
 }
 
 function mountExternalDrive(){
-    setup_progress "Mounting external hird drive."
+    setup_progress "Mounting external hird drive." $YELLOW
     
     select_device
     
-    setup_progress "External hird drive mounted successfully."
+    setup_progress "External hird drive mounted successfully." $YELLOW
 }
 
 function init(){
     #sudo apt-get update && sudo apt-get dist-upgrade -y && sudo apt-get autoremove -y && sudo apt-get autoclean
-    setup_progress "********************************************************************************************"
-    setup_progress "Updating OS, please wait..."
+    setup_progress "********************************************************************************************" $YELLOW
+    setup_progress "Updating OS, please wait..." $YELLOW
     sudo apt-get update && sudo apt-get dist-upgrade -y
 
     sudo timedatectl set-timezone America/Detroit    
 }
 
 function startSetup(){
-    #init
-
-    #install_xrdp
-    
-    #enable_camera
-
-    #enable_ssh
+    init
 
     #mountExternalDrive
     
@@ -272,7 +282,7 @@ function startSetup(){
 
     #setupPortainer
 
-    setup_progress "Setup done successfully."
+    setup_progress "Setup done successfully." $YELLOW
 }
 
 startSetup
