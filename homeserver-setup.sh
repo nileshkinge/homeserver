@@ -22,74 +22,6 @@ function setup_progress () {
   echo -e "$2 $1${NC}"
 }
 
-function install_xrdp(){
-    setup_progress "Installing XRDP, please wait..."
-    sudo apt-get install xrdp -y
-}
-
-function enable_camera(){
-    echo "0 = ENABLED, 1 = DISABLED"
-    #sudo raspi-config nonint do_camera 0
-    cam=$(sudo raspi-config nonint get_camera 0)
-    if [ $cam == 0 ]
-    then
-    setup_progress "Camera Enabled"
-    else
-    setup_progress "Camera is Disabled, enabeling it now"
-    sudo raspi-config nonint do_camera 0
-    setup_progress "Camera is Enabled."
-    fi
-}
-
-function enable_ssh(){
-    varssh=$(sudo raspi-config nonint get_ssh 0)
-    if [ $varssh == 0 ]
-    then
-    setup_progress "SSH Enabled"
-    else
-    setup_progress "SSH is Disabled, enabeling it now"
-    sudo raspi-config nonint do_ssh 0
-    setup_progress "SSH is Enabled."
-    fi
-}
-
-function enable_vnc(){
-    #sudo raspi-config nonint do_vnc 0
-    varVNC=$(raspi-config nonint get_vnc 0)
-    if [ $varVNC == 0 ]
-    then
-    setup_progress "VNC Enabled"
-    else
-    setup_progress "VNC is Disabled, enabeling it now"
-    sudo raspi-config nonint do_vnc 0
-    setup_progress "VNC is Enabled."
-    fi
-}
-
-function enable_remote_GPIO(){
-    #sudo raspi-config nonint do_rgpio 0
-    varRGPIO=$(raspi-config nonint get_rgpio 0)
-    if [ $varRGPIO == 0 ]
-    then
-    setup_progress "Remote GPIO Enabled"
-    else
-    setup_progress "Remote GPIO is Disabled, enabeling it now"
-    sudo raspi-config nonint do_rgpio 0
-    setup_progress "Remote GPIO is Enabled"
-    fi
-}
-
-function install_rclone(){
-    read -p "$(echo -e $IYellow "Do you want to install rclone? (Y/N): "$reset)" wantToInstallRclone
-    if [[ "$wantToInstallRclone" == "Y" || "$wantToInstallRclone" == "y" ]]
-    then
-        setup_progress "installing rclone"
-        sudo -v ; curl https://rclone.org/install.sh | sudo bash
-        setup_progress "rclone installed successfully."
-        setup_progress "Please run 'rclone config' command to configure rclone remote. https://rclone.org/docs/"
-    fi    
-}
-
 function installDocker(){
     
     setupDocker
@@ -120,19 +52,30 @@ function setupDocker(){
     verifyDockerInstallation
 }
 
-function setupPortainer(){
-    #download the docker image to your device.
-    sudo docker pull portainer/portainer-ce:latest
+function set_portainer_volume {
+	#read -p "Enter volume paths for '/var/run/docker.sock' and '/data' respectively. " sock portainerdata
+	setup_progress "Enter volume paths for '/var/run/docker.sock' and '/data' respectively." $YELLOW
+	read sock portainerdata
 
-    #make directory for portainer container if does not exists already.
-    mkdir -p /mnt/seagateDisk/portainer/containers/portainer/portainer_data
+	mkdir -p $sock
+	mkdir -p $portainerdata
 
-    #run portainer container 
-    #sudo docker run -d -p 9000:9000 --name=portainer --restart=always -v /mnt/seagateDisk/portainer/containers/portainer/var/run/docker.sock:/var/run/docker.sock -v /mnt/seagateDisk/portainer/containers/portainer/portainer_data:/data portainer/portainer-ce:latest
-    sudo docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /mnt/seagateDisk/portainer/containers/portainer/var/run/docker.sock:/var/run/docker.sock -v /mnt/seagateDisk/portainer/containers/portainer/portainer_data:/data portainer/portainer-ce:latest
-    
+	v_sock=$sock
+	v_portainerdata=$portainerdata
 }
 
+function setupPortainer(){
+    #download the docker image to your device.
+    #sudo docker pull portainer/portainer-ce:latest
+
+    #make directory for portainer container if does not exists already.
+    set_portainer_volume
+
+    #run portainer container 
+    #sudo docker run -d -p 9000:9000 --name=portainer --restart=always -v /mnt/homeserver/portainer/containers/portainer/var/run/docker.sock:/var/run/docker.sock -v /mnt/homeserver/portainer/containers/portainer/portainer_data:/data portainer/portainer-ce:latest
+    sudo docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v $v_sock:/var/run/docker.sock -v $v_portainerdata:/data portainer/portainer-ce:latest
+    
+}
 
 function replace_fstab {
 	echo -n "UUID=$m_uuid" >> /etc/fstab 	# UUID of device
@@ -214,7 +157,7 @@ function ask_sure {
 	done
 }
 
-createmenu ()
+function createmenu ()
 {
 	#echo "Size of array: $#"
 	#echo "$@"
@@ -274,7 +217,7 @@ function init(){
 }
 
 function startSetup(){
-    init
+    #init
 
     #mountExternalDrive
     
