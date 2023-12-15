@@ -6,88 +6,20 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 NC='\033[0m'          # No Color
-IYellow='\e[93m'      # Yellow
+YELLOW='\e[93m'      # Yellow
 reset='\e[0m'         # reset
 
 
 
 function setup_progress () {
-  local setup_logfile= $DIR/log.log
+  local setup_logfile=$DIR/log.log
   if [ -w $setup_logfile ]
   then
-    echo "$( date ) : $*" >> "$setup_logfile"
+    echo "$( date ) : $1" >> "$setup_logfile"
   else
-    echo "$( date ) : $*" >> "$setup_logfile" 2>&1
+    echo "$( date ) : $1" >> "$setup_logfile" 2>&1
   fi
-  echo "$@"
-}
-
-function install_xrdp(){
-    setup_progress "Installing XRDP, please wait..."
-    sudo apt-get install xrdp -y
-}
-
-function enable_camera(){
-    echo "0 = ENABLED, 1 = DISABLED"
-    #sudo raspi-config nonint do_camera 0
-    cam=$(sudo raspi-config nonint get_camera 0)
-    if [ $cam == 0 ]
-    then
-    setup_progress "Camera Enabled"
-    else
-    setup_progress "Camera is Disabled, enabeling it now"
-    sudo raspi-config nonint do_camera 0
-    setup_progress "Camera is Enabled."
-    fi
-}
-
-function enable_ssh(){
-    varssh=$(sudo raspi-config nonint get_ssh 0)
-    if [ $varssh == 0 ]
-    then
-    setup_progress "SSH Enabled"
-    else
-    setup_progress "SSH is Disabled, enabeling it now"
-    sudo raspi-config nonint do_ssh 0
-    setup_progress "SSH is Enabled."
-    fi
-}
-
-function enable_vnc(){
-    #sudo raspi-config nonint do_vnc 0
-    varVNC=$(raspi-config nonint get_vnc 0)
-    if [ $varVNC == 0 ]
-    then
-    setup_progress "VNC Enabled"
-    else
-    setup_progress "VNC is Disabled, enabeling it now"
-    sudo raspi-config nonint do_vnc 0
-    setup_progress "VNC is Enabled."
-    fi
-}
-
-function enable_remote_GPIO(){
-    #sudo raspi-config nonint do_rgpio 0
-    varRGPIO=$(raspi-config nonint get_rgpio 0)
-    if [ $varRGPIO == 0 ]
-    then
-    setup_progress "Remote GPIO Enabled"
-    else
-    setup_progress "Remote GPIO is Disabled, enabeling it now"
-    sudo raspi-config nonint do_rgpio 0
-    setup_progress "Remote GPIO is Enabled"
-    fi
-}
-
-function install_rclone(){
-    read -p "$(echo -e $IYellow "Do you want to install rclone? (Y/N): "$reset)" wantToInstallRclone
-    if [[ "$wantToInstallRclone" == "Y" || "$wantToInstallRclone" == "y" ]]
-    then
-        setup_progress "installing rclone"
-        sudo -v ; curl https://rclone.org/install.sh | sudo bash
-        setup_progress "rclone installed successfully."
-        setup_progress "Please run 'rclone config' command to configure rclone remote. https://rclone.org/docs/"
-    fi    
+  echo -e "$2 $1${NC}"
 }
 
 function installDocker(){
@@ -120,16 +52,30 @@ function setupDocker(){
     verifyDockerInstallation
 }
 
-function setupPortainer(){
-    #download the docker image to your device.
-    sudo docker pull portainer/portainer-ce:latest
-    
-    #run portainer container 
-    #sudo docker run -d -p 9000:9000 --name=portainer --restart=always -v /mnt/seagateDisk/portainer/containers/portainer/var/run/docker.sock:/var/run/docker.sock -v /mnt/seagateDisk/portainer/containers/portainer/portainer_data:/data portainer/portainer-ce:latest
-    sudo docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /mnt/seagateDisk/portainer/containers/portainer/var/run/docker.sock:/var/run/docker.sock -v /mnt/seagateDisk/portainer/containers/portainer/portainer_data:/data portainer/portainer-ce:latest
-    
+function set_portainer_volume {
+	#read -p "Enter volume paths for '/var/run/docker.sock' and '/data' respectively. " sock portainerdata
+	setup_progress "Enter volume paths for '/var/run/docker.sock' and '/data' respectively." $YELLOW
+	read sock portainerdata
+
+	mkdir -p $sock
+	mkdir -p $portainerdata
+
+	v_sock=$sock
+	v_portainerdata=$portainerdata
 }
 
+function setupPortainer(){
+    #download the docker image to your device.
+    #sudo docker pull portainer/portainer-ce:latest
+
+    #make directory for portainer container if does not exists already.
+    set_portainer_volume
+
+    #run portainer container 
+    #sudo docker run -d -p 9000:9000 --name=portainer --restart=always -v /mnt/homeserver/portainer/containers/portainer/var/run/docker.sock:/var/run/docker.sock -v /mnt/homeserver/portainer/containers/portainer/portainer_data:/data portainer/portainer-ce:latest
+    sudo docker run -d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v $v_sock:/var/run/docker.sock -v $v_portainerdata:/data portainer/portainer-ce:latest
+    
+}
 
 function replace_fstab {
 	echo -n "UUID=$m_uuid" >> /etc/fstab 	# UUID of device
@@ -145,12 +91,12 @@ function replace_fstab {
 	echo -e -n "\t" >> /etc/fstab			# TAB
 	echo "1" >> /etc/fstab				
 	
-	printf "${GREEN}'/etc/fstab' patched!${NC}\n"
+	setup_progress "'/etc/fstab' patched!" $GREEN
 }
 
 function set_type {
-	echo "Setting up '$1' to be mounted on startup ..."
-	echo "Type: $(sudo blkid -o value -s TYPE $1)"
+	setup_progress "Setting up '$1' to be mounted on startup ..." $YELLOW
+	setup_progress "Type: $(sudo blkid -o value -s TYPE $1)" $YELLOW
 	
 	m_type=$(sudo blkid -o value -s TYPE $1)
 	
@@ -158,19 +104,35 @@ function set_type {
 	#	"ntfs" ) echo "preparing NTFS";;
 	#	* ) echo "Everything else";;
 	#esac
-	echo "Filesystem type: $m_type"
+	setup_progress "Filesystem type: $m_type" $YELLOW
 	set_mount_path
 }
 
+function ask_path_creation {
+    setup_progress "Do you wish to create $@ path? (y/n)? " $YELLOW
+    read answer
+
+    if [ "$answer" != "${answer#[Yy]}" ] ;then 
+        mkdir -p $@
+        setup_progress "Path '$@' was created." $YELLOW
+        m_dest=$@
+        replace_fstab
+    else
+        setup_progress "Goodbye!" $YELLOW
+        break;
+    fi
+}
+
 function set_mount_path {
-	printf "${CYAN}Enter mount destination: ${NC}\n"
+	setup_progress "Enter mount destination: " $CYAN
 	read dest
 	if [ $dest != "" ] && [ -d $dest ]; then
-		echo "Path ok..."
+		setup_progress "Path ok..." $YELLOW
 		m_dest=$dest
 		replace_fstab
 	else
-		printf "${RED}Path '$dest' does not exist!${NC}\n"
+		setup_progress "Path '$dest' does not exist!" $RED
+        ask_path_creation $dest
 	fi
 }
 
@@ -195,7 +157,7 @@ function ask_sure {
 	done
 }
 
-createmenu ()
+function createmenu ()
 {
 	#echo "Size of array: $#"
 	#echo "$@"
@@ -208,13 +170,13 @@ createmenu ()
 	select option; do # in "$@" is the default
 		if [ "$REPLY" -gt "$#" ];
 		then
-			echo "Goodbye!"
+			setup_progress "Goodbye!" $YELLOW
 			break;
-		elif [ 1 -le "$REPLY" ] && [ "$REPLY" -le $(($#-1)) ];
+		elif [ 1 -le "$REPLY" ] && [ "$REPLY" -le $(($#+0)) ];
 		then
 			#echo "You selected $option which is option $REPLY"
 			m_uuid=$(echo $option | sed -e "s/^.*\((\)\(.*\)\()\).*$/\2/")
-			#echo "Selected UUID: $m_uuid"
+			setup_progress "Selected UUID: $m_uuid" $YELLOW
 			ask_sure $option
 			break;
 		else
@@ -238,46 +200,32 @@ function select_device {
 }
 
 function mountExternalDrive(){
-    setup_progress "Mounting external hird drive."
+    setup_progress "Mounting external hird drive." $YELLOW
     
     select_device
     
-    setup_progress "External hird drive mounted successfully."
-}
-
-function resetSettings(){
-
-}
-
-function finalizeSetup(){
-    resetSettings
+    setup_progress "External hird drive mounted successfully." $YELLOW
 }
 
 function init(){
     #sudo apt-get update && sudo apt-get dist-upgrade -y && sudo apt-get autoremove -y && sudo apt-get autoclean
-    setup_progress "********************************************************************************************"
-    setup_progress "Updating OS, please wait..."
+    setup_progress "********************************************************************************************" $YELLOW
+    setup_progress "Updating OS, please wait..." $YELLOW
     sudo apt-get update && sudo apt-get dist-upgrade -y
 
     sudo timedatectl set-timezone America/Detroit    
 }
 
 function startSetup(){
-    init
+    #init
 
-    install_xrdp
+    #mountExternalDrive
     
-    enable_camera
+    #setupDocker
 
-    enable_ssh
+    #setupPortainer
 
-    mountExternalDrive
-    
-    setupDocker
-
-    setupPortainer
-
-    setup_progress "Setup done successfully."
+    setup_progress "Setup done successfully." $YELLOW
 }
 
 startSetup
