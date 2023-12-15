@@ -1,0 +1,88 @@
+{
+    "version": "2",
+    "templates": [
+      {
+        "categories": [
+          "Tools",
+          "Dashboard"
+        ],
+        "description": "A dead simple static Homepage for your server to keep your services on hand, from a simple yaml configuration file.",
+        "image": "b4bz/homer:latest",
+        "logo": "https://raw.githubusercontent.com/bastienwirtz/homer/main/public/logo.png",
+        "name": "homer",
+        "note": "This container requires a yml file within the config volume. See the documentation here https://github.com/bastienwirtz/homer",
+        "platform": "linux",
+        "ports": [
+          "8761:8080/tcp"
+        ],
+        "restart_policy": "unless-stopped",
+        "title": "Homer",
+        "type": 1,
+        "volumes": [
+          {
+            "bind": "/mnt/homeserver/portainer/containers/homer/assets/",
+            "container": "/www/assets"
+          }
+        ]
+      },
+      {
+        "categories": [
+          "Tools"
+        ],
+        "description": "This is a Bitwarden server API implementation written in Rust compatible with upstream Bitwarden clients*, perfect for self-hosted deployment where running the official resource-heavy service might not be ideal.",
+        "image": "vaultwarden/server:latest",
+        "logo": "https://raw.githubusercontent.com/bastienwirtz/homer/main/public/logo.png",
+        "name": "vaultwarden",
+        "note": "This project is not associated with the Bitwarden project nor 8bit Solutions LLC.",
+        "platform": "linux",
+        "ports": [
+          "8762:8080/tcp",
+          "3012:3012"
+        ],
+        "restart_policy": "always",
+        "title": "vaultwarden",
+        "type": 1,
+        "volumes": [
+          {
+            "bind": "/mnt/homeserver/portainer/containers/valutwarden/data",
+            "container": "/data"
+          },
+          {
+            "bind": "/mnt/homeserver/portainer/containers/valutwarden/config",
+            "container": "/config"
+          }
+        ]
+      },
+      {
+        "categories": [
+          "Tools"
+        ],
+        "description": "Web File Browser which can be used as a middleware or standalone app.",
+        "image": "filebrowser/filebrowser:s6",
+        "logo": "https://raw.githubusercontent.com/xneo1/portainer_templates/master/Images/filebrowser.png",
+        "name": "filebrowser",
+        "note": "The default user and password is admin/admin.",
+        "platform": "linux",
+        "ports": [
+          "8763:80/tcp"
+        ],
+        "restart_policy": "always",
+        "title": "FileBrowser",
+        "type": 1,
+        "volumes": [
+          {
+            "bind": "/mnt/homeserver",
+            "container": "/srv"
+          },
+          {
+            "bind": "/mnt/homeserver/portainer/containers/file_browser/data",
+            "container": "/database/filebrowser.db"
+          },
+          {
+            "bind": "/mnt/homeserver/portainer/containers/file_browser/config",
+            "container": "/config/settings.json"
+          }
+        ]
+      }
+    ]
+  }
