@@ -67,7 +67,7 @@
         "platform": "linux",
         "ports": [
           "8765:8080/tcp",
-          "8766:3012"
+          "8766:3012/tcp"
         ],
         "restart_policy": "always",
         "title": "vaultwarden",
