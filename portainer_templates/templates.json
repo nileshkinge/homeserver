@@ -111,7 +111,7 @@
         "logo": "https://www.wallabag.org/user/themes/boxify/img/logo-wallabag.svg",
         "name": "Wallabag",
         "repository": {
-          "stackfile": "portainer_templates/stacks/wallabag/wallabagdocker-compose.yml",
+          "stackfile": "portainer_templates/stacks/wallabag/docker-compose.yml",
           "url": "https://github.com/nileshkinge/homeserver"
         },
         "platform": "linux",
