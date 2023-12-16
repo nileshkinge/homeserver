@@ -102,6 +102,25 @@
           }
         ],
         "command": "--port 80 --database /data/database.db --root /srv"
+      },
+      {
+        "categories": [
+          "Tools"
+        ],
+        "description": "wallabag is a web application allowing you to save web pages for later reading. Click, save and read it when you want.",
+        "logo": "https://www.wallabag.org/user/themes/boxify/img/logo-wallabag.svg",
+        "name": "Wallabag",
+        "repository": {
+          "stackfile": "portainer_templates/stacks/wallabag/wallabagdocker-compose.yml",
+          "url": "https://github.com/nileshkinge/homeserver"
+        },
+        "platform": "linux",
+        "ports": [
+          "8234:80/tcp"
+        ],
+        "restart_policy": "always",
+        "title": "Wallabag",
+        "type": 3
       }
     ]
   }
