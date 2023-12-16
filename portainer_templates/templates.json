@@ -84,35 +84,24 @@
         ]
       },
       {
-        "categories": [
-          "Tools"
-        ],
-        "description": "Web File Browser which can be used as a middleware or standalone app.",
-        "image": "filebrowser/filebrowser:s6",
-        "logo": "https://raw.githubusercontent.com/xneo1/portainer_templates/master/Images/filebrowser.png",
-        "name": "filebrowser",
-        "note": "The default user and password is admin/admin.",
-        "platform": "linux",
-        "ports": [
-          "8767:80/tcp"
-        ],
-        "restart_policy": "always",
-        "title": "FileBrowser",
         "type": 1,
+        "title": "File browser",
+        "description": "A web file manager",
+        "note": "Default credentials: admin/admin",
+        "categories": ["filesystem", "storage"],
+        "platform": "linux",
+        "logo": "https://portainer-io-assets.sfo2.digitaloceanspaces.com/logos/filebrowser.png",
+        "image": "filebrowser/filebrowser:latest",
+        "ports": ["80/tcp"],
         "volumes": [
           {
-            "bind": "/mnt/homeserver",
+            "container": "/data"
+          },
+          {
             "container": "/srv"
-          },
-          {
-            "bind": "/mnt/homeserver/portainer/containers/file_browser/data",
-            "container": "/database/filebrowser.db"
-          },
-          {
-            "bind": "/mnt/homeserver/portainer/containers/file_browser/config",
-            "container": "/config/settings.json"
           }
-        ]
+        ],
+        "command": "--port 80 --database /data/database.db --root /srv"
       }
     ]
   }
